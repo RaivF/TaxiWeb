@@ -1,0 +1,12 @@
+@font-face {
+  font-family: 'Mulish';
+  src: url('/public/fonts/Mulish-VariableFont_wght.ttf') format('truetype');
+  font-weight: 300 400 500 600 701;
+  font-style: normal;
+}
+
+body {
+  font-family: 'Mulish', sans-serif;
+  background-color: var(--color-background);
+  margin: 0;
+}
