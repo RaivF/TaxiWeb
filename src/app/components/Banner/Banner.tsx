@@ -17,7 +17,7 @@ const Banner = () => {
 		}
 
 		try {
-			const response = await axios.post('http://localhost:3000/message', data)
+			const response = await axios.post('http://38.180.160.26:3000/message', data)
 			console.log('Ответ от сервера:', response.data)
 		} catch (error) {
 			console.error('Ошибка:', error)
