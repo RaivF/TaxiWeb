@@ -1,50 +1,102 @@
-import { useState } from 'react'
-import { Box, Typography, Button, TextField, Container } from '@mui/material'
+import React, { useState } from 'react'
 import axios from 'axios'
+import {
+	Box,
+	Typography,
+	Button,
+	TextField,
+	Container,
+	Autocomplete,
+} from '@mui/material'
 
-const Banner = () => {
-	// Состояния для хранения значений полей ввода
+const CombinedComponent = () => {
 	const [from, setFrom] = useState('')
 	const [to, setTo] = useState('')
 	const [additional, setAdditional] = useState('')
+	const [distance, setDistance] = useState<number | null>(null)
+	const [price, setPrice] = useState<number | null>(null)
+	const [error, setError] = useState('')
+	const [citySuggestions, setCitySuggestions] = useState<string[]>([])
 
-	// Функция для отправки данных на сервер
-	const sendMessage = async () => {
-		const data = {
-			from: from,
-			to: to,
-			additional: additional,
-		}
+	const API_KEY = '5b3ce3597851110001cf624874c38fe304a74cab84a065000864d141' // Замените на ваш API-ключ от OpenRouteService
 
+	const handleSendMessage = async () => {
 		try {
-			const response = await axios.post('http://38.180.160.26:3000/message', data)
-			console.log('Ответ от сервера:', response.data)
+			// Логика отправки сообщения
+			// await sendMessage(from, to, additional);
+			console.log('Сообщение отправлено')
 		} catch (error) {
-			console.error('Ошибка:', error)
+			console.error('Ошибка при отправке сообщения:', error)
 		}
 	}
 
-	const getChatId = async () => {
-		const url =
-			'https://api.telegram.org/bot7673196064:AAGoAJFZpKnb63QDhkC_pcxrnT7Q3RYG858/getUpdates'
+	const calculateDistance = async () => {
+		console.log(from, to)
+		if (!from || !to) {
+			setError('Пожалуйста, введите оба города.')
+			return
+		}
 
 		try {
-			const response = await axios.post(url)
-			console.log('Ответ от Telegram:', response.data)
+			const responseA = await axios.get(
+				`https://api.openrouteservice.org/geocode/search?api_key=${API_KEY}&text=${from}`
+			)
+			const coordsA = responseA.data.features[0].geometry.coordinates
 
-			// Извлекаем chat_id из ответа
-			if (response.data.ok && response.data.result.length > 0) {
-				const chatId = response.data.result[0].message.chat.id
-				console.log('Ваш chat_id:', chatId)
-			} else {
-				console.log('Нет новых сообщений или обновлений.')
+			const responseB = await axios.get(
+				`https://api.openrouteservice.org/geocode/search?api_key=${API_KEY}&text=${to}`
+			)
+			const coordsB = responseB.data.features[0].geometry.coordinates
+
+			const distanceResponse = await axios.post(
+				`https://api.openrouteservice.org/v2/directions/driving-car`,
+				{
+					coordinates: [coordsA, coordsB],
+				},
+				{
+					headers: {
+						Authorization: API_KEY,
+						'Content-Type': 'application/json',
+					},
+				}
+			)
+
+			const calculatedDistance = (
+				distanceResponse.data.routes[0].summary.distance / 1000
+			).toFixed(2)
+			console.log(Number(calculatedDistance))
+			setDistance(Number(calculatedDistance))
+			setPrice(Number(calculatedDistance) * 20)
+			setError('')
+		} catch (err) {
+			setError('Ошибка при расчете расстояния. Проверьте введенные данные.')
+			console.error(err)
+		}
+	}
+
+	const fetchCitySuggestions = async (query: string) => {
+		try {
+			const response = await axios.get(
+				`https://api.openrouteservice.org/geocode/autocomplete?api_key=${API_KEY}&text=${query}`
+			)
+			const suggestions: string[] = response.data.features.map(
+				(feature: { properties: { label: string } }) => feature.properties.label
+			)
+			setCitySuggestions(suggestions)
+		} catch (error) {
+			console.error('Ошибка при получении подсказок:', error)
+		}
+	}
+
+	const handleInputChange =
+		(setter: React.Dispatch<React.SetStateAction<string>>) =>
+		(event: React.ChangeEvent<HTMLInputElement>) => {
+			const value = event.target.value
+			setter(value)
+			if (value.length > 2) {
+				fetchCitySuggestions(value)
 			}
-		} catch (error) {
-			console.error('Ошибка:', error)
 		}
-	}
-
-	getChatId()
 
 	return (
 		<Box sx={{ bgcolor: 'primary.main', color: 'white', py: 8 }}>
@@ -56,25 +108,44 @@ const Banner = () => {
 					Быстро, удобно, безопасно
 				</Typography>
 				<Box component='form' sx={{ mt: 4 }}>
-					{/* Поле "Откуда" */}
-					<TextField
-						label='Откуда'
-						variant='outlined'
-						fullWidth
-						value={from}
-						onChange={e => setFrom(e.target.value)}
-						sx={{ mb: 2, bgcolor: 'white' }}
+					<Autocomplete
+						freeSolo
+						options={citySuggestions}
+						onChange={i => {
+							const target = i.target as HTMLElement
+							setFrom(target.innerText)
+						}}
+						renderInput={params => (
+							<TextField
+								{...params}
+								label='Откуда'
+								variant='outlined'
+								fullWidth
+								value={from}
+								onChange={handleInputChange(setFrom)}
+								sx={{ mb: 2, bgcolor: 'white' }}
+							/>
+						)}
 					/>
-					{/* Поле "Куда" */}
-					<TextField
-						label='Куда'
-						variant='outlined'
-						fullWidth
-						value={to}
-						onChange={e => setTo(e.target.value)}
-						sx={{ mb: 2, bgcolor: 'white' }}
+					<Autocomplete
+						freeSolo
+						options={citySuggestions}
+						onChange={i => {
+							const target = i.target as HTMLElement
+							setTo(target.innerText)
+						}}
+						renderInput={params => (
+							<TextField
+								{...params}
+								label='Куда'
+								variant='outlined'
+								fullWidth
+								value={to}
+								onChange={handleInputChange(setTo)}
+								sx={{ mb: 2, bgcolor: 'white' }}
+							/>
+						)}
 					/>
-					{/* Дополнительное поле для сообщения */}
 					<TextField
 						label='Дополнительное сообщение'
 						variant='outlined'
@@ -83,19 +154,31 @@ const Banner = () => {
 						onChange={e => setAdditional(e.target.value)}
 						sx={{ mb: 2, bgcolor: 'white' }}
 					/>
-					{/* Кнопка для отправки сообщения */}
 					<Button
 						variant='contained'
 						color='secondary'
 						size='large'
-						onClick={sendMessage}
+						onClick={handleSendMessage}
+						sx={{ mr: 2 }}
 					>
 						Заказать такси
 					</Button>
+					<Button
+						variant='contained'
+						color='secondary'
+						size='large'
+						onClick={calculateDistance}
+					>
+						Рассчитать цену
+					</Button>
 				</Box>
+				{error && <Typography color='error'>{error}</Typography>}
+				{distance && (
+					<Typography style={{ marginTop: '20px' }}>цена {price} р</Typography>
+				)}
 			</Container>
 		</Box>
 	)
 }
 
-export default Banner
+export default CombinedComponent
