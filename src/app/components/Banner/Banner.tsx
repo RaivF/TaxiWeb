@@ -8,6 +8,7 @@ import {
 	Container,
 	Autocomplete,
 } from '@mui/material'
+import { sendMessage } from '../utils/api'
 
 const CombinedComponent = () => {
 	const [from, setFrom] = useState('')
@@ -23,7 +24,7 @@ const CombinedComponent = () => {
 	const handleSendMessage = async () => {
 		try {
 			// Логика отправки сообщения
-			// await sendMessage(from, to, additional);
+			await sendMessage(from, to, additional)
 			console.log('Сообщение отправлено')
 		} catch (error) {
 			console.error('Ошибка при отправке сообщения:', error)
